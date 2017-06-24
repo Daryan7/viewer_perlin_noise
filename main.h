@@ -13,11 +13,14 @@ class PerlinPlugin : public QObject, public BasicPlugin {
 
 public:
     void onPluginLoad();
+    bool paintGL();
 private:
     QOpenGLShaderProgram* program;
     QOpenGLShader* vs;
     QOpenGLShader* fs;
     GLuint textureId;
+    GLuint VAO;
+    GLuint VBO;
 };
 
 #endif

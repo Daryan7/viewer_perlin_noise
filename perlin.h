@@ -1,21 +1,33 @@
 #ifndef PERLIN_H
 #define PERLIN_H
 
+#include "glwidget.h"
+#include <vector>
+
 class PerlinNoise {
     int rows, columns;
-    int w,h;
+    std::vector<QVector2D> gradients;
 
     //Linear interpolation
-    float mix(float a, float b, float r);
+    static float mix(float a, float b, float r);
 
-    //Perlin noise at point x,y
-    float perlinSample(float x, float y);
+    //fade function
+    static float fade(float t);
 
-    //Dot product of vectors vec1 and vec2
-    float dot(float vec1[2], float vec2[2]);
+    void inititalizeGradrient();
 
 public:
-    PerlinNoise(int rows, int columns, int width, int height);
+    //Perlin noise at point x,y
+    float perlinSample(float x, float y) const;
+
+    float octavePerlin(float x, float y, int octaves, double persistence) const;
+
+    //max size
+    PerlinNoise(int rows, int columns);
+    PerlinNoise(int rows, int columns, unsigned int seed);
+
+
+    float *genPerlinTexture(int w, int h) const;
 };
 
 #endif
