@@ -15,12 +15,17 @@ public:
     void onPluginLoad();
     bool paintGL();
 private:
+    //float* tex;
     QOpenGLShaderProgram* program;
     QOpenGLShader* vs;
     QOpenGLShader* fs;
     GLuint textureId;
     GLuint VAO;
     GLuint VBO;
+
+    GLuint terrainVAO;
+    GLuint terrainVertex;
+    GLuint noiseVBO;
 };
 
 #endif

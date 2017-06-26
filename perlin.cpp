@@ -37,15 +37,13 @@ void PerlinNoise::inititalizeGradrient() {
 
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < columns; ++j) {
-            gradients[i*columns + j] = quad[rand()%8];
-            /*float a = (rand()%10000)/float(1000);
-            a = a - int(a);
-            float b = (rand()%10000)/float(1000);
-            b = b - int(b);
-            gradients[i*columns + j] = QVector2D((rand() - rand())+a, (rand()-rand())+b).normalized();*/
+            gradients[i*columns + j] = quad[rand()%4];
         }
     }
 }
+
+float mn, mx;
+bool first = true;
 
 float PerlinNoise::perlinSample(float x, float y) const {
     int x0 = x;
@@ -62,15 +60,40 @@ float PerlinNoise::perlinSample(float x, float y) const {
     QVector2D d2 = pos-QVector2D(x0,y1);
     QVector2D d3 = pos-QVector2D(x1,y1);
 
-    float p0 = QVector2D::dotProduct(d0, gradients[(x0*columns + y0)]);
-    float p1 = QVector2D::dotProduct(d1, gradients[(x1*columns + y0)]);
-    float p2 = QVector2D::dotProduct(d2, gradients[(x0*columns + y1)]);
-    float p3 = QVector2D::dotProduct(d3, gradients[(x1*columns + y1)]);
+    QVector2D g0 = gradients[((x0%rows)*columns + (y0%columns))];
+    QVector2D g1 = gradients[((x1%rows)*columns + (y0%columns))];
+    QVector2D g2 = gradients[((x0%rows)*columns + (y1%columns))];
+    QVector2D g3 = gradients[((x1%rows)*columns + (y1%columns))];
+
+    /*d0.normalize();
+    d1.normalize();
+    d2.normalize();
+    d3.normalize();
+    g0.normalize();
+    g1.normalize();
+    g2.normalize();
+    g3.normalize();*/
+
+    float p0 = QVector2D::dotProduct(d0, g0);
+    float p1 = QVector2D::dotProduct(d1, g1);
+    float p2 = QVector2D::dotProduct(d2, g2);
+    float p3 = QVector2D::dotProduct(d3, g3);
 
     float rx = fade(ux);
     float ry = fade(uy);
     float m0 = mix(p0, p1, rx);
     float m1 = mix(p2, p3, rx);
+
+    float res = mix(m0,m1,ry);
+
+    if (first) {
+        mn = mx = res;
+        first = false;
+    }
+    else {
+        if (res < mn) mn = res;
+        else if (res > mx) mx = res;
+    }
 
     return (mix(m0, m1, ry)+1)/2;
 }
@@ -107,20 +130,25 @@ float* PerlinNoise::genPerlinTexture(int w, int h) const {
     float hf = h;
     float hw = 1/(3*wf);
     float hh = 1/(3*hf);
+    float offX;
+    float offY = 0;
+    float incrX = 0.005;
+    float incrY = 0.005;
 
     for (int i = 0; i < h; ++i) {
+        offX = 0;
         for (int j = 0; j < w; ++j) {
             int addr = (i*w + j);
-            float coordx = j/wf + hw;
-            float coordy = i/hf + hh;
-            //float perl = octavePerlin(coordx, coordy, 7, 0.5);
-            float perl = perlinSample(coordx, coordy);
-            float n = 20 * perl;
-            n = n - floor(n);
+            float perl = octavePerlin(offX + hw, offY + hh, 7, 0.6);
+            //float perl = perlinSample(8*coordx, 8*coordy);
+            //float n = 20 * perl;
+            //n = n - floor(n);
 
-            tex[addr] = n;
+            tex[addr] = perl;
+            offX += incrX;
         }
+        offY += incrY;
     }
-
+    cout << "Min " << mn << " max " << mx << endl;
     return tex;
 }
