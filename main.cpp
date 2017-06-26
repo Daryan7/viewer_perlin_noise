@@ -5,8 +5,8 @@
 const int WIDTH = 1024;
 const int HEIGHT = WIDTH;
 
-const int meshCols = 30;
-const int meshRows = 30;
+const int meshCols = 100;
+const int meshRows = 100;
 
 const int rowVertices = 4 + (meshCols-1)*2;
 
@@ -82,11 +82,6 @@ void PerlinPlugin::onPluginLoad() {
         }
     }
 
-    /*for (int i = 0; i < perlinNoise.size(); ++i) {
-        cout << perlinNoise[i] << " ";
-    }
-    cout << endl;*/
-
     g.glGenVertexArrays(1, &terrainVAO);
     g.glGenBuffers(1, &terrainVertex);
 
@@ -104,6 +99,29 @@ void PerlinPlugin::onPluginLoad() {
 
     g.glBindBuffer(GL_ARRAY_BUFFER, 0);
     g.glBindVertexArray(0);
+
+    QImage img0(QCoreApplication::applicationDirPath()+
+                "/../../plugins/perlin_noise/grass.png");
+    QImage im0 = img0.convertToFormat(QImage::Format_ARGB32).rgbSwapped().mirrored();
+    g.glActiveTexture(GL_TEXTURE0);
+    g.glGenTextures( 1, &textureId0);
+    g.glBindTexture(GL_TEXTURE_2D, textureId0);
+    g.glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, im0.width(), im0.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, im0.bits());
+    g.glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    g.glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    g.glBindTexture(GL_TEXTURE_2D, 0);
+
+    QImage img1(QCoreApplication::applicationDirPath()+
+                "/../../plugins/perlin_noise/rock.png");
+    QImage im1 = img1.convertToFormat(QImage::Format_ARGB32).rgbSwapped().mirrored();
+    g.glActiveTexture(GL_TEXTURE1);
+    g.glGenTextures( 1, &textureId1);
+    g.glBindTexture(GL_TEXTURE_2D, textureId1);
+    g.glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, im1.width(), im1.height(), 0, GL_RGBA, GL_UNSIGNED_BYTE, im1.bits());
+    g.glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    g.glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    g.glBindTexture(GL_TEXTURE_2D, 0);
+
 }
 
 bool PerlinPlugin::paintGL() {
@@ -111,12 +129,15 @@ bool PerlinPlugin::paintGL() {
     g.makeCurrent();
     g.glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-    //g.glBindTexture(GL_TEXTURE_2D, textureId);
-
-
-    //model.translate(-15,-0.5,0);
     program->bind();
     //program->setUniformValue("tex", 0);
+    program->setUniformValue("grass", 0);
+    program->setUniformValue("rock", 1);
+    g.glActiveTexture(GL_TEXTURE0);
+    g.glBindTexture(GL_TEXTURE_2D, textureId0);
+    g.glActiveTexture(GL_TEXTURE1);
+    g.glBindTexture(GL_TEXTURE_2D, textureId1);
+
     g.glBindVertexArray(terrainVAO);
     camera()->setZfar(1000);
     camera()->setZnear(0.1);
@@ -132,7 +153,11 @@ bool PerlinPlugin::paintGL() {
     g.glBindBuffer(GL_ARRAY_BUFFER, 0);
     g.glBindVertexArray(0);
     program->release();
-    //g.glBindTexture(GL_TEXTURE_2D, 0);
+
+    g.glActiveTexture(GL_TEXTURE0);
+    g.glBindTexture(GL_TEXTURE_2D, 0);
+    g.glActiveTexture(GL_TEXTURE1);
+    g.glBindTexture(GL_TEXTURE_2D, 0);
 
     return true;
 }

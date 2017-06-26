@@ -19,7 +19,8 @@ private:
     QOpenGLShaderProgram* program;
     QOpenGLShader* vs;
     QOpenGLShader* fs;
-    GLuint textureId;
+    GLuint perlinTextureId;
+    GLuint textureId0, textureId1;
     GLuint VAO;
     GLuint VBO;
 
