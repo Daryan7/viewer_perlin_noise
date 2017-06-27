@@ -2,9 +2,6 @@
 #include <QCoreApplication>
 #include "perlin.h"
 
-const int WIDTH = 1024;
-const int HEIGHT = WIDTH;
-
 const int meshCols = 100;
 const int meshRows = 100;
 
@@ -116,7 +113,6 @@ void PerlinPlugin::onPluginLoad() {
     g.glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
     g.glBindTexture(GL_TEXTURE_2D, 0);
 
-    g.resize(750, 750);
 }
 
 bool PerlinPlugin::paintGL() {
@@ -168,7 +164,7 @@ bool PerlinPlugin::paintGL() {
 }
 
 void PerlinPlugin::genTerrain() {
-    float* tex = perlin.genPerlinTexture(WIDTH, HEIGHT, offset, speed, octaves, persistence);
+    float* tex = perlin.genPerlinTexture(meshCols+1, meshRows+1, offset, speed, octaves, persistence);
     GLWidget& g = *glwidget();
     g.makeCurrent();
 
@@ -176,20 +172,19 @@ void PerlinPlugin::genTerrain() {
     g.glBindTexture(GL_TEXTURE_2D, perlinTextureId);
     g.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
     g.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-    g.glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, WIDTH, HEIGHT, 0, GL_RED, GL_FLOAT, tex);
+    g.glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, (meshCols+1), (meshRows+1), 0, GL_RED, GL_FLOAT, tex);
     g.glBindTexture(GL_TEXTURE_2D, 0);
-    delete tex;
 
     vector<float> perlinNoise(rowVertices*meshRows);
 
-    float offY = offset + speed/2;
-    for (unsigned int j = 0; j < meshRows; ++j, offY += speed) {
-        float offX = offset + speed/2;
-        for (unsigned int i = 0; i < rowVertices; i += 2, offX += speed) {
-            perlinNoise[j*rowVertices + i] = perlin.octavePerlin(offX, offY, octaves, persistence);
-            perlinNoise[j*rowVertices + i+1] = perlin.octavePerlin(offX, offY + speed, octaves, persistence);
+    for (unsigned int j = 0, y = 0; j < meshRows; ++j, ++y) {
+        for (unsigned int i = 0, x = 0; i < rowVertices; i += 2, ++x) {
+            perlinNoise[j*rowVertices + i] = tex[y*(meshCols+1) + x];
+            perlinNoise[j*rowVertices + i+1] = tex[(y+1)*(meshCols+1) + x];
         }
     }
+
+    delete tex;
 
     g.glBindVertexArray(terrainVAO);
     g.glBindBuffer(GL_ARRAY_BUFFER, noiseVBO);

@@ -42,9 +42,6 @@ void PerlinNoise::inititalizeGradrient() {
     }
 }
 
-//float mn, mx;
-//bool first = true;
-
 float PerlinNoise::perlinSample(float x, float y) const {
     int x0 = x;
     int y0 = y;
@@ -76,15 +73,6 @@ float PerlinNoise::perlinSample(float x, float y) const {
     float m1 = mix(p2, p3, rx);
 
     float res = mix(m0,m1,ry);
-
-    /*if (first) {
-        mn = mx = res;
-        first = false;
-    }
-    else {
-        if (res < mn) mn = res;
-        else if (res > mx) mx = res;
-    }*/
 
     return (res+1)/2;
 }
@@ -133,6 +121,5 @@ float* PerlinNoise::genPerlinTexture(int w, int h, float offset, float speed, in
         }
         offY += incrY;
     }
-    //cout << "Min " << mn << " max " << mx << endl;
     return tex;
 }
