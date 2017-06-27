@@ -24,6 +24,7 @@ private:
     float persistence;
     float offset;
     float speed;
+    float height;
 
     PerlinNoise perlin;
     QOpenGLShaderProgram* program, *programPerlinTex;

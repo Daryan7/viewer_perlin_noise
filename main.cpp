@@ -12,6 +12,7 @@ void PerlinPlugin::onPluginLoad() {
     persistence = 0.5;
     offset = 0;
     speed = 0.01;
+    height = 10;
 
     perlin = PerlinNoise(1024, 1024, 0);
 
@@ -132,6 +133,7 @@ bool PerlinPlugin::paintGL() {
     program->bind();
     program->setUniformValue("grass", 0);
     program->setUniformValue("rock", 1);
+    program->setUniformValue("range", height);
     g.glActiveTexture(GL_TEXTURE0);
     g.glBindTexture(GL_TEXTURE_2D, textureId0);
     g.glActiveTexture(GL_TEXTURE1);
@@ -233,6 +235,14 @@ void PerlinPlugin::keyPressEvent(QKeyEvent *e) {
     case Qt::Key_C:
         ++octaves;
         break;
+    case Qt::Key_T:
+        height += 0.5;
+        break;
+    case Qt::Key_R:
+        if (height - 0.5 > 0) {
+            height -= 0.5;
+        }
+        break;
     default:
         if (e->key() == Qt::Key_P) {
             cout << "Parameters: " << endl;
@@ -240,6 +250,7 @@ void PerlinPlugin::keyPressEvent(QKeyEvent *e) {
             cout << "Persistence: " << persistence << endl;
             cout << "Offset: " << offset << endl;
             cout << "Octaves: " << octaves << endl;
+            cout << "Height: " << height << endl;
         }
         return;
     }

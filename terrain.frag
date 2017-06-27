@@ -18,6 +18,5 @@ void main() {
     vec4 colRock = texture(rock, vtexCoord);
     vec3 normalO = cross(dFdx(objectSpaceVertex), dFdy(objectSpaceVertex));
     vec3 normal = cross(dFdx(eyeSpaceVertex), dFdy(eyeSpaceVertex));
-    //fragColor = vec4(0.5)*normalize(normal).z;//mix(colRock, colGrass, normal.z/length(normal));
     fragColor = mix(colRock, colGrass, fade(normalO.z/length(normalO)))*normalize(normal).z;
 }
