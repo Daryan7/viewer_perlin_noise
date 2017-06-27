@@ -21,29 +21,29 @@ PerlinNoise::PerlinNoise(int rows, int columns, unsigned int seed) {
     inititalizeGradrient();
 }
 
+const QVector2D PerlinNoise::quad[] = {
+    QVector2D(1,1),
+    QVector2D(-1,1),
+    QVector2D(1,-1),
+    QVector2D(-1,-1),
+    QVector2D(sqrt(2), 0),
+    QVector2D(0, sqrt(2)),
+    QVector2D(-sqrt(2), 0),
+    QVector2D(0, -sqrt(2))
+};
+
 void PerlinNoise::inititalizeGradrient() {
-    gradients = vector<QVector2D>(rows*columns);
-    float sqrt2 = sqrt(2);
-    QVector2D quad[] = {
-        QVector2D(1,1),
-        QVector2D(-1,1),
-        QVector2D(1,-1),
-        QVector2D(-1,-1),
-        QVector2D(sqrt2, 0),
-        QVector2D(0, sqrt2),
-        QVector2D(-sqrt2, 0),
-        QVector2D(0, -sqrt2)
-    };
+    gradients = vector<unsigned char>(rows*columns);
 
     for (int i = 0; i < rows; ++i) {
         for (int j = 0; j < columns; ++j) {
-            gradients[i*columns + j] = quad[rand()%4];
+            gradients[i*columns + j] = rand()%8;
         }
     }
 }
 
-float mn, mx;
-bool first = true;
+//float mn, mx;
+//bool first = true;
 
 float PerlinNoise::perlinSample(float x, float y) const {
     int x0 = x;
@@ -60,19 +60,10 @@ float PerlinNoise::perlinSample(float x, float y) const {
     QVector2D d2 = pos-QVector2D(x0,y1);
     QVector2D d3 = pos-QVector2D(x1,y1);
 
-    QVector2D g0 = gradients[((x0%rows)*columns + (y0%columns))];
-    QVector2D g1 = gradients[((x1%rows)*columns + (y0%columns))];
-    QVector2D g2 = gradients[((x0%rows)*columns + (y1%columns))];
-    QVector2D g3 = gradients[((x1%rows)*columns + (y1%columns))];
-
-    /*d0.normalize();
-    d1.normalize();
-    d2.normalize();
-    d3.normalize();
-    g0.normalize();
-    g1.normalize();
-    g2.normalize();
-    g3.normalize();*/
+    QVector2D g0 = quad[gradients[((x0%rows)*columns + (y0%columns))]];
+    QVector2D g1 = quad[gradients[((x1%rows)*columns + (y0%columns))]];
+    QVector2D g2 = quad[gradients[((x0%rows)*columns + (y1%columns))]];
+    QVector2D g3 = quad[gradients[((x1%rows)*columns + (y1%columns))]];
 
     float p0 = QVector2D::dotProduct(d0, g0);
     float p1 = QVector2D::dotProduct(d1, g1);
@@ -86,16 +77,16 @@ float PerlinNoise::perlinSample(float x, float y) const {
 
     float res = mix(m0,m1,ry);
 
-    if (first) {
+    /*if (first) {
         mn = mx = res;
         first = false;
     }
     else {
         if (res < mn) mn = res;
         else if (res > mx) mx = res;
-    }
+    }*/
 
-    return (mix(m0, m1, ry)+1)/2;
+    return (res+1)/2;
 }
 
 float PerlinNoise::fade(float t) {
@@ -123,32 +114,25 @@ float PerlinNoise::octavePerlin(float x, float y, int octaves, double persistenc
     return total/maxValue;
 }
 
-float* PerlinNoise::genPerlinTexture(int w, int h) const {
+float* PerlinNoise::genPerlinTexture(int w, int h, float offset, float speed, int octaves, float persistence) const {
     float* tex = new float[w*h];
 
-    float wf = w;
-    float hf = h;
-    float hw = 1/(3*wf);
-    float hh = 1/(3*hf);
-    float offX;
-    float offY = 0;
-    float incrX = 0.005;
-    float incrY = 0.005;
+    float incrX = speed;
+    float incrY = speed;
+
+    float offY = offset + incrY/2;
 
     for (int i = 0; i < h; ++i) {
-        offX = 0;
+        float offX = offset + incrX/2;
         for (int j = 0; j < w; ++j) {
             int addr = (i*w + j);
-            float perl = octavePerlin(offX + hw, offY + hh, 7, 0.6);
-            //float perl = perlinSample(8*coordx, 8*coordy);
-            //float n = 20 * perl;
-            //n = n - floor(n);
+            float perl = octavePerlin(offX, offY, octaves, persistence);
 
             tex[addr] = perl;
             offX += incrX;
         }
         offY += incrY;
     }
-    cout << "Min " << mn << " max " << mx << endl;
+    //cout << "Min " << mn << " max " << mx << endl;
     return tex;
 }

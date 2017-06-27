@@ -11,10 +11,12 @@ const int meshRows = 100;
 const int rowVertices = 4 + (meshCols-1)*2;
 
 void PerlinPlugin::onPluginLoad() {
-    cout << "Generating perlin object" << endl;
-    PerlinNoise perlin(1024, 1024, 0);
-    cout << "Getting texture" << endl;
-    float* tex = perlin.genPerlinTexture(WIDTH, HEIGHT);
+    octaves = 8;
+    persistence = 0.5;
+    offset = 0;
+    speed = 0.01;
+
+    perlin = PerlinNoise(1024, 1024, 0);
 
     GLWidget & g = *glwidget();
     g.makeCurrent();
@@ -32,16 +34,23 @@ void PerlinPlugin::onPluginLoad() {
     program->addShader(fs);
     program->link();
 
+
+    vsPerlinTex = new QOpenGLShader(QOpenGLShader::Vertex, this);
+    vsPerlinTex->compileSourceFile(QCoreApplication::applicationDirPath()+
+                                   "/../../plugins/perlin_noise/perlinTex.vert");
+
+    fsPerlinTex = new QOpenGLShader(QOpenGLShader::Fragment, this);
+    fsPerlinTex->compileSourceFile(QCoreApplication::applicationDirPath()+
+                                   "/../../plugins/perlin_noise/perlinTex.frag");
+
+    programPerlinTex = new QOpenGLShaderProgram(this);
+    programPerlinTex->addShader(vsPerlinTex);
+    programPerlinTex->addShader(fsPerlinTex);
+    programPerlinTex->link();
+
     // Setup texture
-    /*g.glActiveTexture(GL_TEXTURE0);
-    g.glGenTextures(1, &textureId);
-    g.glBindTexture(GL_TEXTURE_2D, textureId);
-    g.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    g.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    g.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-    g.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-    g.glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, WIDTH, HEIGHT, 0, GL_RED, GL_FLOAT, tex);
-    g.glBindTexture(GL_TEXTURE_2D, 0);*/
+    g.glActiveTexture(GL_TEXTURE0);
+    g.glGenTextures(1, &perlinTextureId);
 
     float vertices[] = {
         0,0,0,
@@ -70,20 +79,9 @@ void PerlinPlugin::onPluginLoad() {
         terrainRow[i+3] = 1;
     }
 
-    vector<float> perlinNoise(rowVertices*meshRows);
-
-    float offY = 0.001;
-    float incr = 0.05;
-    for (unsigned int j = 0; j < meshRows; ++j, offY += incr) {
-        float offX = 0.001;
-        for (unsigned int i = 0; i < rowVertices; i += 2, offX += incr) {
-            perlinNoise[j*rowVertices + i] = perlin.octavePerlin(offX, offY, 7, 0.5);
-            perlinNoise[j*rowVertices + i+1] = perlin.octavePerlin(offX, offY + incr, 7, 0.5);
-        }
-    }
-
     g.glGenVertexArrays(1, &terrainVAO);
     g.glGenBuffers(1, &terrainVertex);
+    g.glGenBuffers(1, &noiseVBO);
 
     g.glBindVertexArray(terrainVAO);
     g.glBindBuffer(GL_ARRAY_BUFFER, terrainVertex);
@@ -91,14 +89,10 @@ void PerlinPlugin::onPluginLoad() {
     g.glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
     g.glEnableVertexAttribArray(0);
 
-    g.glGenBuffers(1, &noiseVBO);
-    g.glBindBuffer(GL_ARRAY_BUFFER, noiseVBO);
-    g.glBufferData(GL_ARRAY_BUFFER, sizeof(float)*perlinNoise.size(), &perlinNoise[0], GL_STATIC_DRAW);
-    g.glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 0, 0);
-    g.glEnableVertexAttribArray(1);
-
     g.glBindBuffer(GL_ARRAY_BUFFER, 0);
     g.glBindVertexArray(0);
+
+    genTerrain();
 
     QImage img0(QCoreApplication::applicationDirPath()+
                 "/../../plugins/perlin_noise/grass.png");
@@ -122,6 +116,7 @@ void PerlinPlugin::onPluginLoad() {
     g.glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
     g.glBindTexture(GL_TEXTURE_2D, 0);
 
+    g.resize(750, 750);
 }
 
 bool PerlinPlugin::paintGL() {
@@ -129,8 +124,16 @@ bool PerlinPlugin::paintGL() {
     g.makeCurrent();
     g.glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+    programPerlinTex->bind();
+    programPerlinTex->setUniformValue("tex", 0);
+    g.glActiveTexture(GL_TEXTURE0);
+    g.glBindTexture(GL_TEXTURE_2D, perlinTextureId);
+    g.glBindVertexArray(VAO);
+    g.glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    programPerlinTex->release();
+
+
     program->bind();
-    //program->setUniformValue("tex", 0);
     program->setUniformValue("grass", 0);
     program->setUniformValue("rock", 1);
     g.glActiveTexture(GL_TEXTURE0);
@@ -141,8 +144,10 @@ bool PerlinPlugin::paintGL() {
     g.glBindVertexArray(terrainVAO);
     camera()->setZfar(1000);
     camera()->setZnear(0.1);
+
     for (int i = 0; i < meshRows; ++i) {
         QMatrix4x4 model;
+        model.translate(-meshCols/2,-meshRows/2,0);
         model.translate(0,i,0);
         program->setUniformValue("modelViewMatrix", camera()->viewMatrix()*model);
         program->setUniformValue("modelViewProjectionMatrix", camera()->projectionMatrix() * camera()->viewMatrix()*model);
@@ -160,4 +165,89 @@ bool PerlinPlugin::paintGL() {
     g.glBindTexture(GL_TEXTURE_2D, 0);
 
     return true;
+}
+
+void PerlinPlugin::genTerrain() {
+    float* tex = perlin.genPerlinTexture(WIDTH, HEIGHT, offset, speed, octaves, persistence);
+    GLWidget& g = *glwidget();
+    g.makeCurrent();
+
+    g.glActiveTexture(GL_TEXTURE0);
+    g.glBindTexture(GL_TEXTURE_2D, perlinTextureId);
+    g.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+    g.glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+    g.glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, WIDTH, HEIGHT, 0, GL_RED, GL_FLOAT, tex);
+    g.glBindTexture(GL_TEXTURE_2D, 0);
+    delete tex;
+
+    vector<float> perlinNoise(rowVertices*meshRows);
+
+    float offY = offset + speed/2;
+    for (unsigned int j = 0; j < meshRows; ++j, offY += speed) {
+        float offX = offset + speed/2;
+        for (unsigned int i = 0; i < rowVertices; i += 2, offX += speed) {
+            perlinNoise[j*rowVertices + i] = perlin.octavePerlin(offX, offY, octaves, persistence);
+            perlinNoise[j*rowVertices + i+1] = perlin.octavePerlin(offX, offY + speed, octaves, persistence);
+        }
+    }
+
+    g.glBindVertexArray(terrainVAO);
+    g.glBindBuffer(GL_ARRAY_BUFFER, noiseVBO);
+    g.glBufferData(GL_ARRAY_BUFFER, sizeof(float)*perlinNoise.size(), &perlinNoise[0], GL_STATIC_DRAW);
+    g.glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 0, 0);
+    g.glEnableVertexAttribArray(1);
+
+    g.glBindVertexArray(0);
+    g.glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void PerlinPlugin::keyPressEvent(QKeyEvent *e) {
+    switch(e->key()) {
+    case Qt::Key_N:
+        perlin = PerlinNoise(1024, 1024);
+        break;
+    case Qt::Key_Right:
+        speed += 0.003;
+        break;
+    case Qt::Key_Left:
+        if (speed - 0.003 >= 0) {
+            speed -= 0.003;
+        }
+        break;
+    case Qt::Key_Up:
+        persistence += 0.02;
+        break;
+    case Qt::Key_Down:
+        if (persistence - 0.02 >= 0) {
+            persistence -= 0.02;
+        }
+        break;
+    case Qt::Key_Q:
+        if (offset - 1 >= 0) {
+            offset -= 1;
+        }
+        break;
+    case Qt::Key_E:
+        offset += 1;
+        break;
+    case Qt::Key_Z:
+        if (octaves - 1 >= 0) {
+            --octaves;
+        }
+        break;
+    case Qt::Key_C:
+        ++octaves;
+        break;
+    default:
+        if (e->key() == Qt::Key_P) {
+            cout << "Parameters: " << endl;
+            cout << "Speed: " << speed << endl;
+            cout << "Persistence: " << persistence << endl;
+            cout << "Offset: " << offset << endl;
+            cout << "Octaves: " << octaves << endl;
+        }
+        return;
+    }
+    genTerrain();
+    glwidget()->update();
 }

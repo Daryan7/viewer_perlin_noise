@@ -8,5 +8,5 @@ uniform mat4 modelViewProjectionMatrix;
 
 void main() {
     vtexCoord = vertex.xy;
-    gl_Position = vec4((vertex.xy*2)-1,0,1);
+    gl_Position = vec4((vertex.xy*0.3*2)-1,0,1);
 }

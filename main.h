@@ -5,6 +5,7 @@
 #include <QOpenGLShader>
 #include <QOpenGLShaderProgram>
 #include <QElapsedTimer>
+#include "perlin.h"
 
 class PerlinPlugin : public QObject, public BasicPlugin {
     Q_OBJECT
@@ -14,11 +15,20 @@ class PerlinPlugin : public QObject, public BasicPlugin {
 public:
     void onPluginLoad();
     bool paintGL();
+    void keyPressEvent(QKeyEvent *);
 private:
-    //float* tex;
-    QOpenGLShaderProgram* program;
-    QOpenGLShader* vs;
-    QOpenGLShader* fs;
+
+    void genTerrain();
+
+    int octaves;
+    float persistence;
+    float offset;
+    float speed;
+
+    PerlinNoise perlin;
+    QOpenGLShaderProgram* program, *programPerlinTex;
+    QOpenGLShader* vs, *vsPerlinTex;
+    QOpenGLShader* fs, *fsPerlinTex;
     GLuint perlinTextureId;
     GLuint textureId0, textureId1;
     GLuint VAO;

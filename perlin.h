@@ -6,7 +6,8 @@
 
 class PerlinNoise {
     int rows, columns;
-    std::vector<QVector2D> gradients;
+    std::vector<unsigned char> gradients;
+    static const QVector2D quad[];
 
     //Linear interpolation
     static float mix(float a, float b, float r);
@@ -22,12 +23,12 @@ public:
 
     float octavePerlin(float x, float y, int octaves, double persistence) const;
 
+    PerlinNoise() {}
     //max size
     PerlinNoise(int rows, int columns);
     PerlinNoise(int rows, int columns, unsigned int seed);
 
-
-    float *genPerlinTexture(int w, int h) const;
+    float *genPerlinTexture(int w, int h, float offset, float incr, int octaves, float persistence) const;
 };
 
 #endif
